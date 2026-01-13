@@ -2073,8 +2073,20 @@
                 const checkResponse = await fetch(`${API_BASE}/data/${DATA_KEY}`);
                 console.log('Check existence - Status:', checkResponse.status);
                 
-                let response;
+                let needsCreate = false;
+                
                 if (checkResponse.status === 404) {
+                    needsCreate = true;
+                } else {
+                    const checkResult = await checkResponse.json();
+                    console.log('Check result:', checkResult);
+                    if (!checkResult.success) {
+                        needsCreate = true;
+                    }
+                }
+                
+                let response;
+                if (needsCreate) {
                     // Créer nouvelle entrée
                     console.log('Création nouvelle entrée avec POST...');
                     response = await fetch(`${API_BASE}/data`, {

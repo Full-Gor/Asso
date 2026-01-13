@@ -2062,8 +2062,8 @@
         // Sauvegarder les photos sur Cloud1
         async function savePhotos() {
             console.log('=== savePhotos() appelé ===');
-            console.log('authToken:', authToken ? 'Défini (' + authToken.substring(0, 20) + '...)' : 'NON DÉFINI');
-            console.log('photos à sauvegarder:', photos);
+            console.log('authToken existe:', !!authToken);
+            console.log('Nombre de photos:', photos.length);
             
             if (!authToken) {
                 console.error('Pas de token! Impossible de sauvegarder.');
@@ -2072,18 +2072,15 @@
             }
             
             try {
-                const headers = { 
+                var headers = { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`
+                    'Authorization': 'Bearer ' + authToken
                 };
                 
-                // Données à envoyer
-                const photosData = JSON.stringify(photos);
-                console.log('Données photos:', photosData);
+                var photosData = JSON.stringify(photos);
+                console.log('Envoi POST...');
                 
-                // Toujours utiliser POST pour créer/écraser
-                console.log('Envoi POST vers /api/data...');
-                const response = await fetch(`${API_BASE}/data`, {
+                var response = await fetch(API_BASE + '/data', {
                     method: 'POST',
                     headers: headers,
                     body: JSON.stringify({
@@ -2092,14 +2089,13 @@
                     })
                 });
                 
-                console.log('Réponse - Status:', response.status);
-                const result = await response.json();
-                console.log('Réponse - Body:', result);
+                console.log('Réponse Status:', response.status);
+                var result = await response.json();
+                console.log('Réponse Body:', result);
                 
-                // Si la clé existe déjà, faire un PUT
                 if (!result.success && result.error && result.error.includes('existe')) {
-                    console.log('Clé existe, tentative PUT...');
-                    const putResponse = await fetch(`${API_BASE}/data/${DATA_KEY}`, {
+                    console.log('Clé existe, PUT...');
+                    var putResponse = await fetch(API_BASE + '/data/' + DATA_KEY, {
                         method: 'PUT',
                         headers: headers,
                         body: JSON.stringify({
@@ -2107,7 +2103,7 @@
                         })
                     });
                     
-                    const putResult = await putResponse.json();
+                    var putResult = await putResponse.json();
                     console.log('PUT Réponse:', putResult);
                     
                     if (!putResult.success) {

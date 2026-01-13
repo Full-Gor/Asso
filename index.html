@@ -2445,11 +2445,6 @@
             showToast('Photo ajoutée avec succès !', 'success');
         });
 
-        // Save to localStorage
-        function savePhotos() {
-            localStorage.setItem('asso_photos', JSON.stringify(photos));
-        }
-
         // Render admin photos list
         function renderPhotos() {
             if (photos.length === 0) {

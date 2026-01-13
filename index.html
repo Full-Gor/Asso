@@ -2031,14 +2031,24 @@
         
         // Charger les photos depuis Cloud1
         async function loadPhotos() {
+            console.log('=== loadPhotos() appelé ===');
             try {
                 const response = await fetch(`${API_BASE}/data/${DATA_KEY}`);
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.success && result.data && result.data.value) {
+                console.log('Load response status:', response.status);
+                
+                const result = await response.json();
+                console.log('Load result:', result);
+                
+                if (result.success && result.data && result.data.value) {
+                    // Parser la valeur (qui est une string JSON)
+                    try {
                         photos = JSON.parse(result.data.value) || [];
+                    } catch (e) {
+                        // Si c'est déjà un array
+                        photos = result.data.value || [];
                     }
-                } else if (response.status === 404) {
+                    console.log('Photos chargées:', photos);
+                } else {
                     photos = [];
                 }
             } catch (error) {
@@ -2058,7 +2068,7 @@
             if (!authToken) {
                 console.error('Pas de token! Impossible de sauvegarder.');
                 showToast('Erreur: Non connecté', 'error');
-                return;
+                return false;
             }
             
             try {
@@ -2067,61 +2077,53 @@
                     'Authorization': `Bearer ${authToken}`
                 };
                 
-                console.log('Headers envoyés:', headers);
+                // Données à envoyer
+                const photosData = JSON.stringify(photos);
+                console.log('Données photos:', photosData);
                 
-                // Vérifier si la clé existe
-                const checkResponse = await fetch(`${API_BASE}/data/${DATA_KEY}`);
-                console.log('Check existence - Status:', checkResponse.status);
+                // Toujours utiliser POST pour créer/écraser
+                console.log('Envoi POST vers /api/data...');
+                const response = await fetch(`${API_BASE}/data`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({
+                        key: DATA_KEY,
+                        value: photosData
+                    })
+                });
                 
-                let needsCreate = false;
+                console.log('Réponse - Status:', response.status);
+                const result = await response.json();
+                console.log('Réponse - Body:', result);
                 
-                if (checkResponse.status === 404) {
-                    needsCreate = true;
-                } else {
-                    const checkResult = await checkResponse.json();
-                    console.log('Check result:', checkResult);
-                    if (!checkResult.success) {
-                        needsCreate = true;
-                    }
-                }
-                
-                let response;
-                if (needsCreate) {
-                    // Créer nouvelle entrée
-                    console.log('Création nouvelle entrée avec POST...');
-                    response = await fetch(`${API_BASE}/data`, {
-                        method: 'POST',
-                        headers: headers,
-                        body: JSON.stringify({
-                            key: DATA_KEY,
-                            value: JSON.stringify(photos)
-                        })
-                    });
-                } else {
-                    // Mettre à jour entrée existante
-                    console.log('Mise à jour avec PUT...');
-                    response = await fetch(`${API_BASE}/data/${DATA_KEY}`, {
+                // Si la clé existe déjà, faire un PUT
+                if (!result.success && result.error && result.error.includes('existe')) {
+                    console.log('Clé existe, tentative PUT...');
+                    const putResponse = await fetch(`${API_BASE}/data/${DATA_KEY}`, {
                         method: 'PUT',
                         headers: headers,
                         body: JSON.stringify({
-                            value: JSON.stringify(photos)
+                            value: photosData
                         })
                     });
-                }
-                
-                console.log('Réponse sauvegarde - Status:', response.status);
-                const result = await response.json();
-                console.log('Réponse sauvegarde - Body:', result);
-                
-                if (!response.ok) {
+                    
+                    const putResult = await putResponse.json();
+                    console.log('PUT Réponse:', putResult);
+                    
+                    if (!putResult.success) {
+                        throw new Error(putResult.error || 'Erreur PUT');
+                    }
+                } else if (!result.success) {
                     throw new Error(result.error || 'Erreur serveur');
                 }
                 
                 showToast('Sauvegarde réussie!', 'success');
+                return true;
                 
             } catch (error) {
                 console.error('Erreur sauvegarde photos:', error);
-                showToast('Erreur de sauvegarde: ' + error.message, 'error');
+                showToast('Erreur: ' + error.message, 'error');
+                return false;
             }
         }
         
